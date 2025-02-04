@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32-CAM Live Stream Diagnostics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #stream {
+            max-width: 100%;
+            border: 2px solid #333;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: #eee;
+        }
+        #status {
+            margin-top: 10px;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <img id="stream" width="640" height="480">
+    <div id="status">Conectando...</div>
+    <script>
+        const statusDiv = document.getElementById('status');
+        const img = document.getElementById('stream');
+
+        // IMPORTANTE: Reemplaza con la IP REAL de tu ESP32-CAM
+        const ws = new WebSocket('ws://192.168.1.108:81');
+
+        ws.onopen = function() {
+            statusDiv.textContent = 'Conexión WebSocket establecida ✓';
+            statusDiv.style.color = 'green';
+        };
+
+        ws.onmessage = function(event) {
+            if (typeof event.data === 'string') {
+                if (event.data === 'stream_started') {
+                    statusDiv.textContent = 'Streaming iniciado ▶️';
+                    statusDiv.style.color = 'blue';
+                } else if (event.data === 'stream_ended') {
+                    statusDiv.textContent = 'Streaming finalizado ⏹️';
+                    statusDiv.style.color = 'red';
+                }
+            } else {
+                // Intento de conversión de imagen más robusto
+                try {
+                    const blob = new Blob([event.data], {type: 'image/jpeg'});
+                    img.src = URL.createObjectURL(blob);
+                    statusDiv.textContent = 'Recibiendo frames ✓';
+                } catch (error) {
+                    statusDiv.textContent = 'Error procesando imagen: ' + error;
+                    statusDiv.style.color = 'red';
+                }
+            }
+        };
+
+        ws.onerror = function(error) {
+            statusDiv.textContent = 'Error de WebSocket: ' + error;
+            statusDiv.style.color = 'red';
+            console.error('WebSocket Error:', error);
+        };
+
+        ws.onclose = function() {
+            statusDiv.textContent = 'Conexión WebSocket cerrada ❌';
+            statusDiv.style.color = 'red';
+        };
+    </script>
+</body>
+</html>
